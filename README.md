@@ -1,13 +1,3 @@
-[![Deploy this example with Pulumi](https://www.pulumi.com/images/deploy-with-pulumi/dark.svg)](https://app.pulumi.com/new?template=https://github.com/pulumi/examples/blob/master/kubernetes-ts-guestbook/components/README.md#gh-light-mode-only)
-[![Deploy this example with Pulumi](https://get.pulumi.com/new/button-light.svg)](https://app.pulumi.com/new?template=https://github.com/pulumi/examples/blob/master/kubernetes-ts-guestbook/components/README.md#gh-dark-mode-only)
-
-# Kubernetes Guestbook (with components)
-
-A version of the [Kubernetes Guestbook](https://kubernetes.io/docs/tutorials/stateless-application/guestbook/)
-application using Pulumi. Unlike [the straight port of the original YAML](../simple), this variant
-leverages real code to eliminate boilerplate. A `ServiceDeployment` class is used that combines the common pattern
-of deploying a container image using a Kubernetes `Deployment`, and then scaling it using a `Service`.
-
 ## Prerequisites
 
 1. [Install Pulumi](https://www.pulumi.com/docs/get-started/install/)
@@ -20,15 +10,6 @@ of deploying a container image using a Kubernetes `Deployment`, and then scaling
 
     ```bash
     pulumi stack init dev
-    ```
-
-1.  This example will attempt to expose the Guestbook application to the Internet with a `Service` of
-    type `LoadBalancer`. Since minikube does not support `LoadBalancer`, the Guestbook application
-    already knows to use type `ClusterIP` instead; all you need to do is tell it whether you're
-    deploying to minikube:
-
-    ```bash
-    pulumi config set isMinikube <value>
     ```
 
 1.  Install dependencies:
@@ -44,27 +25,32 @@ of deploying a container image using a Kubernetes `Deployment`, and then scaling
     ```
 
     ```
-    Updating (guestbook):
-
-         Type                                Name                      Status
-     +   pulumi:pulumi:Stack                 guestbook-easy-guestbook  created
-     +   ├─ k8sjs:service:ServiceDeployment  redis-leader              created
-     +   │  ├─ kubernetes:apps:Deployment    redis-leader              created
-     +   │  └─ kubernetes:core:Service       redis-leader              created
-     +   ├─ k8sjs:service:ServiceDeployment  frontend                  created
-     +   │  ├─ kubernetes:apps:Deployment    frontend                  created
-     +   │  └─ kubernetes:core:Service       frontend                  created
-     +   └─ k8sjs:service:ServiceDeployment  redis-replica             created
-     +      ├─ kubernetes:apps:Deployment    redis-replica             created
-     +      └─ kubernetes:core:Service       redis-replica             created
+    Updating (dev):
+        Type                                                        Name                                   Status
+    +   pulumi:pulumi:Stack                                         guestbook-easy-dev                     created (23s)
+    +   ├─ kubernetes:apps/v1:Deployment                            redis-leader                           created (3s)
+    +   ├─ kubernetes:apps/v1:Deployment                            redis-replica                          created (2s)
+    +   ├─ kubernetes:apps/v1:Deployment                            guestbook                              created (4s)
+    +   ├─ kubernetes:helm.sh/v3:Release                            prometheus                             created (21s)
+    +   ├─ kubernetes:core/v1:Namespace                             ingressns                              created (0.01s)
+    +   ├─ kubernetes:yaml/v2:ConfigFile                            dashboard                              created
+    +   │  └─ kubernetes:core/v1:ConfigMap                          dashboard:default/guestbook-dashboard  created (0.01s)
+    +   ├─ kubernetes:helm.sh/v3:Release                            ingresscontroller                      created (0.79s)
+    +   ├─ service-monitor:monitoring.coreos.com/v1:ServiceMonitor  guestbook                              created (0.01s)
+    +   ├─ kubernetes:core/v1:Service                               redis-replica                          created (10s)
+    +   ├─ kubernetes:core/v1:Service                               redis-leader                           created (10s)
+    +   ├─ kubernetes:core/v1:Service                               frontend                               created (10s)
+    +   └─ kubernetes:networking.k8s.io/v1:Ingress                  guestbook                              created (0.15s)
 
     Outputs:
-        frontendIp: "10.105.48.30"
+       adminPassword: "fizzbuzz123"
+       frontendIp   : "127.0.0.1"
+       grafanaUrl   : "http://127.0.0.1/grafana"
 
     Resources:
-        + 10 created
+       + 14 created
 
-    Duration: 21s
+    Duration: 24s
     ```
 
 1.  Open the application in your browser to see the running application. If you're running
@@ -74,11 +60,18 @@ of deploying a container image using a Kubernetes `Deployment`, and then scaling
     open $(pulumi stack output frontendIp)
     ```
 
-    > _Note_: minikube does not support type `LoadBalancer`; if you are deploying to minikube, make sure
-    > to run `kubectl port-forward svc/frontend 8080:80` to forward the cluster port to the local
-    > machine and access the service via `localhost:8080`.
+    > _Note_: if you are deploying to minikube, make sure
+    > to run `minikube tunnel` to forward the nginx ingress controller's service to the local
+    > machine and access the service via `localhost`. (I do not have a macbook, this
+    was tested on WSL2 on Windows 11. The fundamental principles should be the same so it should still work,
+    but caveat lector)
 
     ![Guestbook in browser](./imgs/guestbook.png)
+
+1.  The Grafana and Prometheus servers are both available from the same host, at the `/grafana`
+    and `/prom` paths respectively. There should already be a Guestbook dashboard available to view
+    on the Grafana server, and you can debug any potential scrape issues by going to `/prom` and looking at
+    `Status > Target health` or `Status > Service discovery`.
 
 ## Cleaning up
 
